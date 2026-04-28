@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -7,6 +7,20 @@ const NEBULA_COLORS = ['#7c4dff', '#2f7dff', '#62f6ff'];
 
 function sceneProgress() {
   return window.__spaceProgress || { total: 0, blackHole: 0, cameraDepth: 0, parallax: 0 };
+}
+
+function usePrefersReducedMotion() {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setPrefersReducedMotion(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  return prefersReducedMotion;
 }
 
 function CameraFloat({ intensity = 1 }) {
@@ -114,55 +128,59 @@ function StarLayer({ count, radius, depth, speed, size, opacity, colorShift = 0,
   const geometry = useMemo(() => new THREE.SphereGeometry(1, 6, 6), []);
   const material = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity, toneMapped: false }), [opacity]);
   const stars = useMemo(() => {
-    const data = [];
+    const x = new Float32Array(count);
+    const y = new Float32Array(count);
+    const z = new Float32Array(count);
+    const scales = new Float32Array(count);
+    const twinkles = new Float32Array(count);
+    const colorIndexes = new Uint8Array(count);
+
     for (let i = 0; i < count; i += 1) {
       const theta = Math.random() * Math.PI * 2;
       const r = Math.sqrt(Math.random()) * radius;
-      data.push({
-        x: Math.cos(theta) * r,
-        y: (Math.random() - 0.5) * radius * 0.76,
-        z: -Math.random() * depth - 4,
-        scale: THREE.MathUtils.randFloat(size * 0.55, size * 1.7),
-        twinkle: Math.random() * Math.PI * 2,
-        color: STAR_COLORS[(i + colorShift) % STAR_COLORS.length],
-      });
+      x[i] = Math.cos(theta) * r;
+      y[i] = (Math.random() - 0.5) * radius * 0.76;
+      z[i] = -Math.random() * depth - 4;
+      scales[i] = THREE.MathUtils.randFloat(size * 0.55, size * 1.7);
+      twinkles[i] = Math.random() * Math.PI * 2;
+      colorIndexes[i] = (i + colorShift) % STAR_COLORS.length;
     }
-    return data;
+    return { x, y, z, scales, twinkles, colorIndexes };
   }, [colorShift, count, depth, radius, size]);
 
   useLayoutEffect(() => {
-    stars.forEach((star, index) => {
-      dummy.position.set(star.x, star.y, star.z);
-      dummy.scale.setScalar(star.scale);
+    for (let index = 0; index < count; index += 1) {
+      dummy.position.set(stars.x[index], stars.y[index], stars.z[index]);
+      dummy.scale.setScalar(stars.scales[index]);
       dummy.updateMatrix();
       mesh.current.setMatrixAt(index, dummy.matrix);
-      color.set(star.color);
+      color.set(STAR_COLORS[stars.colorIndexes[index]]);
       mesh.current.setColorAt(index, color);
-    });
+    }
     mesh.current.instanceMatrix.needsUpdate = true;
     mesh.current.instanceColor.needsUpdate = true;
-  }, [color, dummy, stars]);
+  }, [color, count, dummy, stars]);
 
   useFrame(({ clock }, delta) => {
     const elapsed = clock.elapsedTime;
     const progress = sceneProgress();
     const finalApproach = THREE.MathUtils.smoothstep(progress.blackHole, 0, 1);
-    stars.forEach((star, index) => {
-      star.z += delta * speed;
-      if (star.z > 7) {
-        star.z = -depth - 7;
+    for (let index = 0; index < count; index += 1) {
+      stars.z[index] += delta * speed;
+      if (stars.z[index] > 7) {
+        stars.z[index] = -depth - 7;
       }
-      const shimmer = 0.74 + Math.sin(elapsed * 0.75 + star.twinkle) * 0.22;
+      const shimmer = 0.74 + Math.sin(elapsed * 0.75 + stars.twinkles[index]) * 0.22;
       const centerPull = finalApproach * parallax * 0.018;
       dummy.position.set(
-        star.x * (1 - centerPull) + Math.sin(elapsed * 0.04 + star.y) * 0.12,
-        star.y * (1 - centerPull),
-        star.z + finalApproach * parallax * 0.8,
+        stars.x[index] * (1 - centerPull) + Math.sin(elapsed * 0.04 + stars.y[index]) * 0.12,
+        stars.y[index] * (1 - centerPull),
+        stars.z[index] + finalApproach * parallax * 0.8,
       );
-      dummy.scale.setScalar(star.scale * shimmer);
+      dummy.scale.setScalar(stars.scales[index] * shimmer);
       dummy.updateMatrix();
       mesh.current.setMatrixAt(index, dummy.matrix);
-    });
+    }
     mesh.current.rotation.z = Math.sin(elapsed * 0.025) * 0.015 + finalApproach * parallax * 0.012;
     mesh.current.position.x = -progress.parallax * parallax * 0.18;
     mesh.current.position.z = progress.parallax * parallax;
@@ -175,7 +193,7 @@ function StarLayer({ count, radius, depth, speed, size, opacity, colorShift = 0,
   );
 }
 
-function FloatingParticles({ count = 180 }) {
+function FloatingParticles({ count = 70 }) {
   const points = useRef();
   const material = useMemo(
     () => new THREE.PointsMaterial({
@@ -238,27 +256,29 @@ function SpaceEnvironment() {
       <NebulaLayer color={NEBULA_COLORS[0]} position={[-3.4, 1.6, -18]} scale={[18, 10, 1]} speed={0.34} opacity={0.18} rotation={-0.18} parallax={0.7} />
       <NebulaLayer color={NEBULA_COLORS[1]} position={[4.5, -1.2, -23]} scale={[22, 12, 1]} speed={0.24} opacity={0.15} rotation={0.34} parallax={0.35} />
       <NebulaLayer color={NEBULA_COLORS[2]} position={[0.7, 0.1, -15]} scale={[13, 7.5, 1]} speed={0.42} opacity={0.11} rotation={0.08} parallax={1.1} />
-      <StarLayer count={900} radius={12} depth={24} speed={0.22} size={0.012} opacity={0.92} parallax={2.2} />
-      <StarLayer count={1300} radius={20} depth={40} speed={0.12} size={0.009} opacity={0.7} colorShift={2} parallax={1.15} />
-      <StarLayer count={1700} radius={34} depth={66} speed={0.06} size={0.007} opacity={0.52} colorShift={4} parallax={0.45} />
+      <StarLayer count={450} radius={12} depth={24} speed={0.22} size={0.013} opacity={0.92} parallax={2.2} />
+      <StarLayer count={650} radius={20} depth={40} speed={0.12} size={0.01} opacity={0.72} colorShift={2} parallax={1.15} />
+      <StarLayer count={850} radius={34} depth={66} speed={0.06} size={0.008} opacity={0.56} colorShift={4} parallax={0.45} />
       <FloatingParticles />
     </group>
   );
 }
 
 export default function SpaceScene({ className = '', cameraFloat = 1 }) {
+  const prefersReducedMotion = usePrefersReducedMotion();
+
   return (
     <div className={`space-canvas ${className}`.trim()} aria-hidden="true">
       <Canvas
         camera={{ position: [0, 0, 8.8], fov: 58, near: 0.1, far: 90 }}
-        dpr={[1, 1.25]}
-        frameloop="always"
+        dpr={[1, 1.15]}
+        frameloop={prefersReducedMotion ? 'demand' : 'always'}
         gl={{ antialias: false, alpha: true, powerPreference: 'high-performance' }}
       >
         <color attach="background" args={['#01020a']} />
         <fog attach="fog" args={['#020412', 18, 58]} />
         <SpaceEnvironment />
-        <CameraFloat intensity={cameraFloat} />
+        {!prefersReducedMotion && <CameraFloat intensity={cameraFloat} />}
       </Canvas>
       <div className="cosmic-depth-fade" />
     </div>

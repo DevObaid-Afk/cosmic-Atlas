@@ -1,7 +1,7 @@
 import InfoCard from './InfoCard.jsx';
 import { planetFacts } from '../data/spaceData.js';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 const planetModels = [
@@ -55,12 +55,29 @@ function makePlanetTexture(model) {
   return texture;
 }
 
+function usePrefersReducedMotion() {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setPrefersReducedMotion(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  return prefersReducedMotion;
+}
+
 function OrbitRing({ radius }) {
+  const geometry = useMemo(() => new THREE.TorusGeometry(radius, 0.004, 8, 120), [radius]);
+  const material = useMemo(
+    () => new THREE.MeshBasicMaterial({ color: '#7df5ff', transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending }),
+    [],
+  );
+
   return (
-    <mesh rotation={[Math.PI / 2, 0, 0]}>
-      <torusGeometry args={[radius, 0.004, 8, 160]} />
-      <meshBasicMaterial color="#7df5ff" transparent opacity={0.18} blending={THREE.AdditiveBlending} />
-    </mesh>
+    <mesh geometry={geometry} material={material} rotation={[Math.PI / 2, 0, 0]} />
   );
 }
 
@@ -70,6 +87,22 @@ function PlanetBody({ model, index }) {
   const cloud = useRef();
   const phase = useMemo(() => index * 1.7, [index]);
   const texture = useMemo(() => makePlanetTexture(model), [model]);
+  const planetGeometry = useMemo(() => new THREE.SphereGeometry(model.radius, 36, 36), [model.radius]);
+  const planetMaterial = useMemo(
+    () => new THREE.MeshStandardMaterial({
+      color: model.color,
+      map: texture,
+      roughness: model.roughness,
+      metalness: 0.04,
+      emissive: model.emissive || '#080808',
+      emissiveIntensity: 0.14,
+    }),
+    [model, texture],
+  );
+  const cloudGeometry = useMemo(() => new THREE.SphereGeometry(model.radius, 24, 24), [model.radius]);
+  const cloudMaterial = useMemo(() => new THREE.MeshStandardMaterial({ color: '#dff8ff', transparent: true, opacity: 0.16, roughness: 1, depthWrite: false }), []);
+  const ringGeometry = useMemo(() => new THREE.TorusGeometry(model.radius * 1.38, 0.012, 8, 120), [model.radius]);
+  const ringMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color: '#ffd7a6', transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending }), []);
 
   useFrame(({ clock }, delta) => {
     pivot.current.rotation.y = clock.elapsedTime * model.speed + phase;
@@ -82,26 +115,19 @@ function PlanetBody({ model, index }) {
     <group ref={pivot}>
       <group position={[model.orbit, 0, 0]}>
         <mesh ref={planet} castShadow receiveShadow>
-          <sphereGeometry args={[model.radius, 48, 48]} />
-          <meshStandardMaterial
-            color={model.color}
-            map={texture}
-            roughness={model.roughness}
-            metalness={0.04}
-            emissive={model.emissive || '#080808'}
-            emissiveIntensity={0.14}
-          />
+          <primitive object={planetGeometry} attach="geometry" />
+          <primitive object={planetMaterial} attach="material" />
         </mesh>
         {model.name === 'Earth' && (
           <mesh ref={cloud} scale={1.018}>
-            <sphereGeometry args={[model.radius, 32, 32]} />
-            <meshStandardMaterial color="#dff8ff" transparent opacity={0.16} roughness={1} depthWrite={false} />
+            <primitive object={cloudGeometry} attach="geometry" />
+            <primitive object={cloudMaterial} attach="material" />
           </mesh>
         )}
         {model.name === 'Jupiter' && (
           <mesh rotation={[Math.PI / 2.08, 0, 0]}>
-            <torusGeometry args={[model.radius * 1.38, 0.012, 8, 160]} />
-            <meshBasicMaterial color="#ffd7a6" transparent opacity={0.32} blending={THREE.AdditiveBlending} />
+            <primitive object={ringGeometry} attach="geometry" />
+            <primitive object={ringMaterial} attach="material" />
           </mesh>
         )}
       </group>
@@ -111,6 +137,8 @@ function PlanetBody({ model, index }) {
 
 function PlanetInfographic() {
   const group = useRef();
+  const sunGeometry = useMemo(() => new THREE.SphereGeometry(0.2, 24, 24), []);
+  const sunMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color: '#fff4bd' }), []);
 
   useFrame(({ clock }) => {
     group.current.rotation.x = -0.32 + Math.sin(clock.elapsedTime * 0.18) * 0.035;
@@ -123,8 +151,8 @@ function PlanetInfographic() {
       <directionalLight position={[4, 4, 5]} intensity={3.2} color="#f5fbff" castShadow />
       <pointLight position={[-3, -2, 2]} intensity={1.4} color="#625bff" />
       <mesh>
-        <sphereGeometry args={[0.2, 32, 32]} />
-        <meshBasicMaterial color="#fff4bd" />
+        <primitive object={sunGeometry} attach="geometry" />
+        <primitive object={sunMaterial} attach="material" />
       </mesh>
       <pointLight intensity={9} distance={8} color="#fff1b8" />
       {planetModels.map((model) => (
@@ -138,6 +166,16 @@ function PlanetInfographic() {
 }
 
 export default function PlanetSection() {
+  const stageRef = useRef(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => setIsVisible(entry.isIntersecting), { rootMargin: '160px' });
+    if (stageRef.current) observer.observe(stageRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <section id="planets" className="section split-section" data-scene="planets" aria-labelledby="planets-title">
       <div className="section-copy reveal">
@@ -149,8 +187,8 @@ export default function PlanetSection() {
           after a stellar nursery cleared.
         </p>
       </div>
-      <div className="planet-stage reveal" role="img" aria-label="Animated orbital model showing rotating planets circling a central star.">
-      <Canvas camera={{ position: [0, 4.1, 6.8], fov: 43 }} dpr={[1, 1.25]} gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}>
+      <div ref={stageRef} className="planet-stage reveal" role="img" aria-label="Animated orbital model showing rotating planets circling a central star.">
+        <Canvas camera={{ position: [0, 4.1, 6.8], fov: 43 }} dpr={[1, 1.15]} frameloop={isVisible && !prefersReducedMotion ? 'always' : 'demand'} gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}>
           <PlanetInfographic />
         </Canvas>
         <div className="planet-readouts" aria-hidden="true">

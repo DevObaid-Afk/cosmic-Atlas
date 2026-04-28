@@ -1,14 +1,28 @@
 import InfoCard from './InfoCard.jsx';
 import { galaxyFacts } from '../data/spaceData.js';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
+
+function usePrefersReducedMotion() {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setPrefersReducedMotion(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  return prefersReducedMotion;
+}
 
 function SpiralGalaxy() {
   const points = useRef();
   const halo = useRef();
   const positions = useMemo(() => {
-    const count = 2600;
+    const count = 900;
     const data = new Float32Array(count * 3);
 
     for (let i = 0; i < count; i += 1) {
@@ -22,6 +36,14 @@ function SpiralGalaxy() {
 
     return data;
   }, []);
+  const pointsMaterial = useMemo(
+    () => new THREE.PointsMaterial({ color: '#dff8ff', size: 0.041, transparent: true, opacity: 0.84, blending: THREE.AdditiveBlending, depthWrite: false }),
+    [],
+  );
+  const haloGeometry = useMemo(() => new THREE.TorusGeometry(2.2, 0.16, 14, 150), []);
+  const haloMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color: '#7c4dff', transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false }), []);
+  const coreGeometry = useMemo(() => new THREE.SphereGeometry(0.36, 32, 32), []);
+  const coreMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color: '#fff8d9', transparent: true, opacity: 0.92 }), []);
 
   useFrame(({ clock }, delta) => {
     points.current.rotation.y += delta * 0.065;
@@ -35,15 +57,15 @@ function SpiralGalaxy() {
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" count={positions.length / 3} array={positions} itemSize={3} />
         </bufferGeometry>
-        <pointsMaterial color="#dff8ff" size={0.035} transparent opacity={0.82} blending={THREE.AdditiveBlending} depthWrite={false} />
+        <primitive object={pointsMaterial} attach="material" />
       </points>
       <mesh ref={halo} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[2.2, 0.16, 18, 220]} />
-        <meshBasicMaterial color="#7c4dff" transparent opacity={0.18} blending={THREE.AdditiveBlending} depthWrite={false} />
+        <primitive object={haloGeometry} attach="geometry" />
+        <primitive object={haloMaterial} attach="material" />
       </mesh>
       <mesh>
-        <sphereGeometry args={[0.36, 48, 48]} />
-        <meshBasicMaterial color="#fff8d9" transparent opacity={0.92} />
+        <primitive object={coreGeometry} attach="geometry" />
+        <primitive object={coreMaterial} attach="material" />
       </mesh>
       <pointLight intensity={4} distance={7} color="#9fefff" />
     </group>
@@ -51,6 +73,16 @@ function SpiralGalaxy() {
 }
 
 export default function GalaxySection() {
+  const stageRef = useRef(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(([entry]) => setIsVisible(entry.isIntersecting), { rootMargin: '160px' });
+    if (stageRef.current) observer.observe(stageRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <section id="galaxies" className="section galaxy-section" data-scene="galaxy" aria-labelledby="galaxies-title">
       <div className="section-copy centered reveal">
@@ -62,8 +94,8 @@ export default function GalaxySection() {
           vast luminous architecture.
         </p>
       </div>
-      <div className="galaxy-orbit reveal" role="img" aria-label="Rotating spiral galaxy visualization with labels for the dense core, spiral arms, and dust halo.">
-        <Canvas camera={{ position: [0, 4.5, 7], fov: 42 }} dpr={[1, 1.25]} gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}>
+      <div ref={stageRef} className="galaxy-orbit reveal" role="img" aria-label="Rotating spiral galaxy visualization with labels for the dense core, spiral arms, and dust halo.">
+        <Canvas camera={{ position: [0, 4.5, 7], fov: 42 }} dpr={[1, 1.15]} frameloop={isVisible && !prefersReducedMotion ? 'always' : 'demand'} gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}>
           <ambientLight intensity={0.35} />
           <SpiralGalaxy />
         </Canvas>
