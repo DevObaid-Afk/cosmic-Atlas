@@ -220,6 +220,52 @@ p {
   grid-template-columns: minmax(0, 0.82fr) minmax(18rem, 0.72fr);
 }
 
+.planet-stage {
+  position: relative;
+  height: clamp(28rem, 48vw, 38rem);
+  min-height: 34rem;
+  width: min(100%, 42rem);
+  justify-self: center;
+  border: 1px solid rgba(128, 247, 255, 0.16);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(128, 247, 255, 0.12), transparent 34%),
+    linear-gradient(145deg, rgba(9, 18, 42, 0.46), rgba(2, 3, 10, 0.1));
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 28px 90px rgba(0, 0, 0, 0.24);
+  overflow: hidden;
+}
+
+.planet-stage canvas,
+.galaxy-orbit canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.planet-readouts {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.planet-readouts span,
+.galaxy-label {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(128, 247, 255, 0.22);
+  border-radius: 999px;
+  color: rgba(244, 251, 255, 0.78);
+  background: rgba(5, 12, 28, 0.48);
+  backdrop-filter: blur(14px);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
 .card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -234,19 +280,41 @@ p {
 }
 
 .info-card {
+  position: relative;
   min-height: 12rem;
   padding: 1.25rem;
   border-radius: 8px;
-  transition: transform 260ms ease, border-color 260ms ease, box-shadow 260ms ease;
+  overflow: hidden;
+  transition: transform 260ms ease, border-color 260ms ease, box-shadow 260ms ease, background 260ms ease;
+}
+
+.info-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(128, 247, 255, 0.16), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 36%);
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+
+.info-card > * {
+  position: relative;
 }
 
 .info-card:hover {
   transform: translateY(-8px) scale(1.015);
   border-color: rgba(128, 247, 255, 0.6);
-  box-shadow: 0 28px 90px rgba(40, 143, 255, 0.18), 0 0 36px rgba(128, 247, 255, 0.14);
+  background: linear-gradient(145deg, rgba(11, 31, 70, 0.78), rgba(18, 12, 42, 0.5));
+  box-shadow: 0 28px 90px rgba(40, 143, 255, 0.2), 0 0 42px rgba(128, 247, 255, 0.18);
 }
 
-.info-card span {
+.info-card:hover::before {
+  opacity: 1;
+}
+
+.info-card-metric {
   margin-bottom: 1rem;
 }
 
@@ -267,70 +335,126 @@ p {
   filter: drop-shadow(0 0 34px rgba(128, 247, 255, 0.18));
 }
 
-.spiral-ring,
-.spiral-core {
+.galaxy-label {
   position: absolute;
-  inset: 12%;
-  border-radius: 50%;
+  animation: labelFloat 4.8s ease-in-out infinite;
 }
 
-.spiral-ring {
-  border: 1px solid rgba(128, 247, 255, 0.3);
-  background: conic-gradient(from 45deg, transparent, rgba(128, 247, 255, 0.16), rgba(255, 188, 99, 0.14), transparent 62%);
-  animation: spin 18s linear infinite;
+.label-core {
+  top: 44%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
-.ring-b {
-  inset: 26%;
-  transform: rotate(55deg);
-  animation-duration: 11s;
+.label-arm {
+  top: 16%;
+  right: 4%;
+  animation-delay: -1.3s;
 }
 
-.spiral-core {
-  inset: 42%;
-  background: radial-gradient(circle, #fff, var(--gold) 22%, rgba(128, 247, 255, 0.2) 54%, transparent 70%);
+.label-halo {
+  left: 2%;
+  bottom: 18%;
+  animation-delay: -2.4s;
 }
 
 .scale-ruler {
   position: relative;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 0.8rem;
-  padding: 1.6rem 0 2rem;
+  min-height: 21rem;
+  padding: 3.5rem 0 2rem;
+  isolation: isolate;
 }
 
-.scale-ruler::before {
+.scale-beam {
   content: '';
   position: absolute;
-  top: 50%;
+  top: 8.2rem;
   left: 0;
-  right: 0;
-  height: 1px;
+  width: 100%;
+  height: 0.18rem;
   background: linear-gradient(90deg, var(--cyan), var(--blue), var(--violet), var(--gold));
   box-shadow: 0 0 28px rgba(128, 247, 255, 0.42);
+  transform-origin: left center;
+  animation: scaleBeam 3.8s ease-in-out infinite alternate;
 }
 
-.scale-ruler span {
+.scale-stop {
   position: relative;
-  min-height: 4.8rem;
-  display: grid;
-  place-items: start center;
-  color: rgba(244, 251, 255, 0.78);
-  text-align: center;
-  font-size: 0.82rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  width: var(--stop-width);
+  min-height: 2.9rem;
+  border-right: 1px solid rgba(128, 247, 255, 0.28);
+  margin-bottom: 0.72rem;
+  animation: scalePulse 4.2s ease-in-out infinite;
 }
 
-.scale-ruler span::after {
+.scale-stop i {
   content: '';
   position: absolute;
-  top: calc(50% - 0.35rem);
+  right: -0.35rem;
+  top: 3.98rem;
   width: 0.7rem;
   height: 0.7rem;
   border-radius: 50%;
   background: var(--cyan);
   box-shadow: 0 0 22px var(--cyan);
+}
+
+.scale-stop strong,
+.scale-stop span {
+  display: block;
+  width: fit-content;
+  max-width: min(18rem, 80vw);
+  margin-left: auto;
+  padding-right: 0.9rem;
+  text-align: right;
+}
+
+.scale-stop strong {
+  color: var(--white);
+  font-size: clamp(0.98rem, 1.7vw, 1.25rem);
+}
+
+.scale-stop span {
+  color: var(--cyan);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lightyear-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  max-width: 1060px;
+  margin: 0 auto 1rem;
+  padding: 1.15rem 1.25rem;
+  border: 1px solid rgba(128, 247, 255, 0.22);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(9, 18, 42, 0.72), rgba(12, 10, 30, 0.42));
+  backdrop-filter: blur(18px);
+}
+
+.lightyear-panel span {
+  display: block;
+  color: var(--gold);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.lightyear-panel strong {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: clamp(1rem, 2vw, 1.45rem);
+}
+
+.lightyear-panel p {
+  max-width: 28rem;
+  margin: 0;
+  font-size: 0.95rem;
 }
 
 .black-hole-section {
@@ -355,6 +479,21 @@ p {
   to { opacity: 1; transform: scaleX(1); }
 }
 
+@keyframes labelFloat {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -0.55rem; }
+}
+
+@keyframes scaleBeam {
+  from { transform: scaleX(0.72); opacity: 0.72; }
+  to { transform: scaleX(1); opacity: 1; }
+}
+
+@keyframes scalePulse {
+  0%, 100% { opacity: 0.78; }
+  50% { opacity: 1; }
+}
+
 @media (max-width: 900px) {
   .hero-section,
   .split-section {
@@ -375,32 +514,57 @@ p {
     grid-template-columns: 1fr;
   }
 
+  .planet-stage {
+    min-height: 28rem;
+    width: min(100%, 34rem);
+  }
+
   .galaxy-orbit {
     width: min(78vw, 28rem);
   }
 
   .scale-ruler {
-    grid-template-columns: 1fr;
-    padding-left: 1.3rem;
+    min-height: auto;
+    padding: 1rem 0 1rem 1.4rem;
   }
 
-  .scale-ruler::before {
+  .scale-beam {
     top: 0;
     bottom: 0;
     left: 0.35rem;
     width: 1px;
     height: auto;
+    transform-origin: center top;
+    animation-name: none;
   }
 
-  .scale-ruler span {
-    min-height: 3.4rem;
-    place-items: center start;
+  .scale-stop {
+    width: 100%;
+    min-height: 4rem;
+    border-right: 0;
+    border-left: 1px solid rgba(128, 247, 255, 0.24);
+    padding-left: 1rem;
+  }
+
+  .scale-stop i {
+    left: -1.28rem;
+    right: auto;
+    top: 0.4rem;
+  }
+
+  .scale-stop strong,
+  .scale-stop span {
+    margin-left: 0;
+    padding-right: 0;
     text-align: left;
   }
 
-  .scale-ruler span::after {
-    left: -1.28rem;
-    top: calc(50% - 0.35rem);
+  .lightyear-panel {
+    display: block;
+  }
+
+  .lightyear-panel p {
+    margin-top: 0.8rem;
   }
 }
 
@@ -419,5 +583,27 @@ p {
 
   .info-card {
     min-height: 10rem;
+  }
+
+  .planet-stage {
+    min-height: 23rem;
+  }
+
+  .planet-readouts {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .planet-readouts span,
+  .galaxy-label {
+    font-size: 0.64rem;
+  }
+
+  .label-arm {
+    right: -0.3rem;
+  }
+
+  .label-halo {
+    left: -0.3rem;
   }
 }

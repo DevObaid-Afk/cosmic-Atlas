@@ -29,7 +29,7 @@ export function initScrollAnimations() {
       },
     });
 
-    gsap.utils.toArray(".reveal").forEach((el) => {
+    gsap.utils.toArray(".reveal").filter((el) => !el.closest(".reveal-group")).forEach((el) => {
       gsap.fromTo(
         el,
         {
@@ -46,6 +46,30 @@ export function initScrollAnimations() {
           scrollTrigger: {
             trigger: el,
             start: "top 86%",
+            toggleActions: "play none none reverse",
+          },
+        },
+      );
+    });
+
+    gsap.utils.toArray(".reveal-group").forEach((group) => {
+      gsap.fromTo(
+        group.querySelectorAll(".info-card"),
+        {
+          autoAlpha: 0,
+          y: 36,
+          filter: "blur(12px)",
+        },
+        {
+          autoAlpha: 1,
+          y: 0,
+          filter: "blur(0px)",
+          duration: 0.95,
+          stagger: 0.12,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: group,
+            start: "top 84%",
             toggleActions: "play none none reverse",
           },
         },
