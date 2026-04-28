@@ -4,7 +4,12 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 gsap.registerPlugin(ScrollTrigger);
 
 export function initScrollAnimations() {
-  window.__spaceProgress = { total: 0, blackHole: 0 };
+  window.__spaceProgress = {
+    total: 0,
+    blackHole: 0,
+    cameraDepth: 0,
+    parallax: 0,
+  };
 
   const ctx = gsap.context(() => {
     gsap.to(window.__spaceProgress, {
@@ -15,6 +20,18 @@ export function initScrollAnimations() {
         start: "top top",
         end: "bottom bottom",
         scrub: 1,
+      },
+    });
+
+    gsap.to(window.__spaceProgress, {
+      cameraDepth: 1,
+      parallax: 1,
+      ease: "none",
+      scrollTrigger: {
+        trigger: document.body,
+        start: "top top",
+        end: "bottom bottom",
+        scrub: 2.4,
       },
     });
 
@@ -77,9 +94,9 @@ export function initScrollAnimations() {
     });
 
     gsap.to(".space-canvas", {
-      opacity: 0.88,
-      scale: 1.45,
-      filter: "blur(2px)",
+      opacity: 0.9,
+      scale: 1.04,
+      filter: "blur(0.6px) saturate(1.08)",
       scrollTrigger: {
         trigger: '[data-scene="blackhole"]',
         start: "top center",

@@ -458,16 +458,110 @@ p {
 }
 
 .black-hole-section {
-  min-height: 180vh;
-  align-content: start;
-  padding-top: 26vh;
+  min-height: 118vh;
+  align-content: center;
+  justify-items: center;
+  gap: clamp(1.4rem, 3vw, 2.4rem);
+  padding-top: 14vh;
+  padding-bottom: 14vh;
+}
+
+.black-hole-section .section-copy {
+  max-width: 900px;
+}
+
+.black-hole-section .section-copy h2 {
+  max-width: 780px;
+  margin-inline: auto;
+}
+
+.black-hole-visual {
+  position: relative;
+  width: min(76vw, 44rem);
+  aspect-ratio: 1 / 0.58;
+  display: grid;
+  place-items: center;
+  margin: clamp(0.4rem, 1.8vw, 1rem) auto;
+  isolation: isolate;
+}
+
+.black-hole-visual::before,
+.black-hole-visual::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.black-hole-visual::before {
+  width: 72%;
+  height: 48%;
+  background: radial-gradient(ellipse, rgba(128, 247, 255, 0.16), transparent 68%);
+  filter: blur(16px);
+  opacity: 0.85;
+}
+
+.black-hole-visual::after {
+  width: 54%;
+  height: 92%;
+  background: radial-gradient(circle, rgba(0, 0, 0, 0) 38%, rgba(128, 247, 255, 0.13) 42%, transparent 64%);
+  opacity: 0.72;
+  animation: horizonPulse 5s ease-in-out infinite;
+}
+
+.accretion-disk {
+  position: absolute;
+  border-radius: 50%;
+  transform: rotateX(70deg) rotateZ(-8deg);
+  mix-blend-mode: screen;
+}
+
+.disk-outer {
+  width: 82%;
+  height: 45%;
+  border: 0.36rem solid rgba(255, 188, 99, 0.76);
+  box-shadow:
+    0 0 32px rgba(255, 188, 99, 0.42),
+    0 0 72px rgba(128, 247, 255, 0.18),
+    inset 0 0 28px rgba(255, 188, 99, 0.22);
+  animation: diskDrift 13s linear infinite;
+}
+
+.disk-inner {
+  width: 58%;
+  height: 31%;
+  border: 0.18rem solid rgba(128, 247, 255, 0.72);
+  box-shadow: 0 0 42px rgba(128, 247, 255, 0.32);
+  animation: diskDrift 9s linear infinite reverse;
+}
+
+.event-horizon {
+  position: relative;
+  z-index: 2;
+  width: min(34vw, 13.5rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 44% 38%, #03030a 0 44%, #000 62%, #000 100%);
+  box-shadow:
+    0 0 0 1px rgba(128, 247, 255, 0.12),
+    0 0 46px rgba(0, 0, 0, 0.95),
+    0 0 86px rgba(255, 188, 99, 0.24);
+}
+
+.black-hole-grid {
+  margin-top: 0;
+}
+
+.black-hole-grid .info-card {
+  min-height: 10.5rem;
 }
 
 .horizon-terminal {
   width: min(100%, 36rem);
-  margin-top: 15vh;
+  margin: 0 auto;
   padding: 1.2rem 1.3rem;
   border-radius: 8px;
+  text-align: center;
 }
 
 @keyframes spin {
@@ -492,6 +586,15 @@ p {
 @keyframes scalePulse {
   0%, 100% { opacity: 0.78; }
   50% { opacity: 1; }
+}
+
+@keyframes diskDrift {
+  to { transform: rotateX(70deg) rotateZ(352deg); }
+}
+
+@keyframes horizonPulse {
+  0%, 100% { transform: scale(0.96); opacity: 0.58; }
+  50% { transform: scale(1.04); opacity: 0.82; }
 }
 
 @media (max-width: 900px) {
@@ -566,6 +669,21 @@ p {
   .lightyear-panel p {
     margin-top: 0.8rem;
   }
+
+  .black-hole-section {
+    min-height: auto;
+    padding-top: 12vh;
+    padding-bottom: 10vh;
+  }
+
+  .black-hole-visual {
+    width: min(92vw, 34rem);
+    aspect-ratio: 1 / 0.68;
+  }
+
+  .event-horizon {
+    width: min(42vw, 11rem);
+  }
 }
 
 @media (max-width: 560px) {
@@ -605,5 +723,26 @@ p {
 
   .label-halo {
     left: -0.3rem;
+  }
+
+  .black-hole-section {
+    gap: 1.15rem;
+  }
+
+  .black-hole-visual {
+    width: 100%;
+    aspect-ratio: 1 / 0.78;
+  }
+
+  .disk-outer {
+    border-width: 0.24rem;
+  }
+
+  .disk-inner {
+    border-width: 0.13rem;
+  }
+
+  .event-horizon {
+    width: min(52vw, 9.5rem);
   }
 }

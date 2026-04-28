@@ -6,7 +6,7 @@ const STAR_COLORS = ['#ffffff', '#dff8ff', '#b9d6ff', '#a7f7ff', '#d8c8ff'];
 const NEBULA_COLORS = ['#7c4dff', '#2f7dff', '#62f6ff'];
 
 function sceneProgress() {
-  return window.__spaceProgress || { total: 0, blackHole: 0 };
+  return window.__spaceProgress || { total: 0, blackHole: 0, cameraDepth: 0, parallax: 0 };
 }
 
 function CameraFloat({ intensity = 1 }) {
@@ -16,21 +16,24 @@ function CameraFloat({ intensity = 1 }) {
     const elapsed = clock.elapsedTime;
     const progress = sceneProgress();
     const mobileScale = viewport.width < 7 ? 0.62 : 1;
-    const driftX = Math.sin(elapsed * 0.18) * 0.42 + pointer.x * 0.22;
-    const driftY = Math.cos(elapsed * 0.14) * 0.26 + pointer.y * 0.12;
-    const scrollPush = progress.total * 2.2 - progress.blackHole * 1.4;
+    const cinematicDepth = THREE.MathUtils.smoothstep(progress.cameraDepth, 0, 1);
+    const driftX = Math.sin(elapsed * 0.18) * 0.36 + pointer.x * 0.16;
+    const driftY = Math.cos(elapsed * 0.14) * 0.22 + pointer.y * 0.1;
+    const scrollPush = cinematicDepth * 7.2 - progress.blackHole * 0.9;
+    const targetZ = 8.8 - scrollPush;
+    const lookAheadZ = -14 - cinematicDepth * 9;
 
     camera.position.x = THREE.MathUtils.lerp(camera.position.x, driftX * intensity * mobileScale, 0.035);
     camera.position.y = THREE.MathUtils.lerp(camera.position.y, driftY * intensity * mobileScale, 0.035);
-    camera.position.z = THREE.MathUtils.lerp(camera.position.z, 8.8 - scrollPush, 0.03);
-    camera.rotation.z = THREE.MathUtils.lerp(camera.rotation.z, Math.sin(elapsed * 0.1) * 0.018, 0.025);
-    camera.lookAt(pointer.x * 0.45, pointer.y * 0.22, -14);
+    camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.026);
+    camera.rotation.z = THREE.MathUtils.lerp(camera.rotation.z, Math.sin(elapsed * 0.1) * 0.014, 0.022);
+    camera.lookAt(pointer.x * 0.34, pointer.y * 0.18, lookAheadZ);
   });
 
   return null;
 }
 
-function NebulaLayer({ color, position, scale, speed, opacity, rotation = 0 }) {
+function NebulaLayer({ color, position, scale, speed, opacity, rotation = 0, parallax = 0 }) {
   const mesh = useRef();
   const uniforms = useMemo(
     () => ({
@@ -42,8 +45,11 @@ function NebulaLayer({ color, position, scale, speed, opacity, rotation = 0 }) {
   );
 
   useFrame(({ clock }) => {
+    const progress = sceneProgress();
     uniforms.uTime.value = clock.elapsedTime * speed;
     mesh.current.rotation.z = rotation + Math.sin(clock.elapsedTime * speed * 0.35) * 0.08;
+    mesh.current.position.x = position[0] - progress.parallax * parallax * 0.26;
+    mesh.current.position.z = position[2] + progress.parallax * parallax;
   });
 
   return (
@@ -89,7 +95,7 @@ function NebulaLayer({ color, position, scale, speed, opacity, rotation = 0 }) {
   );
 }
 
-function StarLayer({ count, radius, depth, speed, size, opacity, colorShift = 0 }) {
+function StarLayer({ count, radius, depth, speed, size, opacity, colorShift = 0, parallax = 0 }) {
   const mesh = useRef();
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const color = useMemo(() => new THREE.Color(), []);
@@ -125,6 +131,7 @@ function StarLayer({ count, radius, depth, speed, size, opacity, colorShift = 0 
 
   useFrame(({ clock }, delta) => {
     const elapsed = clock.elapsedTime;
+    const progress = sceneProgress();
     stars.forEach((star, index) => {
       star.z += delta * speed;
       if (star.z > 7) {
@@ -137,6 +144,8 @@ function StarLayer({ count, radius, depth, speed, size, opacity, colorShift = 0 
       mesh.current.setMatrixAt(index, dummy.matrix);
     });
     mesh.current.rotation.z = Math.sin(elapsed * 0.025) * 0.015;
+    mesh.current.position.x = -progress.parallax * parallax * 0.18;
+    mesh.current.position.z = progress.parallax * parallax;
     mesh.current.instanceMatrix.needsUpdate = true;
   });
 
@@ -166,9 +175,11 @@ function FloatingParticles({ count = 360 }) {
 
   useFrame(({ clock }) => {
     const elapsed = clock.elapsedTime;
+    const progress = sceneProgress();
     points.current.rotation.y = Math.sin(elapsed * 0.07) * 0.04;
     points.current.rotation.x = Math.cos(elapsed * 0.05) * 0.025;
     points.current.position.y = Math.sin(elapsed * 0.18) * 0.16;
+    points.current.position.z = progress.parallax * 2.4;
   });
 
   return (
@@ -195,18 +206,19 @@ function SpaceEnvironment() {
 
   useFrame(({ clock }) => {
     const elapsed = clock.elapsedTime;
+    const progress = sceneProgress();
     group.current.rotation.y = Math.sin(elapsed * 0.025) * 0.035;
-    group.current.position.x = Math.sin(elapsed * 0.035) * 0.18;
+    group.current.position.x = Math.sin(elapsed * 0.035) * 0.18 - progress.parallax * 0.22;
   });
 
   return (
     <group ref={group}>
-      <NebulaLayer color={NEBULA_COLORS[0]} position={[-3.4, 1.6, -18]} scale={[18, 10, 1]} speed={0.42} opacity={0.18} rotation={-0.18} />
-      <NebulaLayer color={NEBULA_COLORS[1]} position={[4.5, -1.2, -23]} scale={[22, 12, 1]} speed={0.3} opacity={0.15} rotation={0.34} />
-      <NebulaLayer color={NEBULA_COLORS[2]} position={[0.7, 0.1, -15]} scale={[13, 7.5, 1]} speed={0.54} opacity={0.11} rotation={0.08} />
-      <StarLayer count={1800} radius={12} depth={24} speed={0.22} size={0.012} opacity={0.92} />
-      <StarLayer count={2600} radius={20} depth={40} speed={0.12} size={0.009} opacity={0.7} colorShift={2} />
-      <StarLayer count={3400} radius={34} depth={66} speed={0.06} size={0.007} opacity={0.52} colorShift={4} />
+      <NebulaLayer color={NEBULA_COLORS[0]} position={[-3.4, 1.6, -18]} scale={[18, 10, 1]} speed={0.42} opacity={0.18} rotation={-0.18} parallax={0.7} />
+      <NebulaLayer color={NEBULA_COLORS[1]} position={[4.5, -1.2, -23]} scale={[22, 12, 1]} speed={0.3} opacity={0.15} rotation={0.34} parallax={0.35} />
+      <NebulaLayer color={NEBULA_COLORS[2]} position={[0.7, 0.1, -15]} scale={[13, 7.5, 1]} speed={0.54} opacity={0.11} rotation={0.08} parallax={1.1} />
+      <StarLayer count={1800} radius={12} depth={24} speed={0.22} size={0.012} opacity={0.92} parallax={2.2} />
+      <StarLayer count={2600} radius={20} depth={40} speed={0.12} size={0.009} opacity={0.7} colorShift={2} parallax={1.15} />
+      <StarLayer count={3400} radius={34} depth={66} speed={0.06} size={0.007} opacity={0.52} colorShift={4} parallax={0.45} />
       <FloatingParticles />
     </group>
   );
