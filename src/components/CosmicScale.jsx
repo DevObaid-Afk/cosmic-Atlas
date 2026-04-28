@@ -11,17 +11,17 @@ const scaleStops = [
 
 export default function CosmicScale() {
   return (
-    <section className="section scale-section" data-scene="scale">
+    <section id="scale" className="section scale-section" data-scene="scale" aria-labelledby="scale-title">
       <div className="section-copy reveal">
         <p className="eyebrow">Cosmic scale</p>
-        <h2>Distance is the universe's deepest user interface.</h2>
+        <h2 id="scale-title">Distance is the universe's deepest user interface.</h2>
         <p>
           Light-years turn space into time. Looking farther means looking older,
           from nearby planets to galaxies whose light began traveling before
           Earth existed.
         </p>
       </div>
-      <div className="scale-ruler reveal">
+      <div className="scale-ruler reveal" role="img" aria-label="A light-year comparison ruler showing the Moon, Sun, Neptune, Proxima Centauri, and the Milky Way.">
         <div className="scale-beam" />
         {scaleStops.map((stop) => (
           <div className="scale-stop" style={{ '--stop-width': stop.width }} key={stop.label}>

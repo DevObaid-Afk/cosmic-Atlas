@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Replace with an absolute sitemap URL when the production domain is known.
+Sitemap: /sitemap.xml

@@ -11,6 +11,50 @@ const planetModels = [
   { name: 'Neptune', radius: 0.48, orbit: 4.05, color: '#3e72ff', roughness: 0.58, speed: 0.16, spin: 0.58, emissive: '#06134a' },
 ];
 
+function makePlanetTexture(model) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  const base = new THREE.Color(model.color);
+
+  ctx.fillStyle = model.color;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  for (let y = 0; y < canvas.height; y += model.name === 'Jupiter' ? 8 : 14) {
+    const tone = base.clone().offsetHSL(0, 0, (Math.random() - 0.5) * 0.18);
+    ctx.fillStyle = `#${tone.getHexString()}`;
+    ctx.globalAlpha = model.name === 'Jupiter' ? 0.46 : 0.18;
+    ctx.fillRect(0, y, canvas.width, Math.max(3, Math.random() * 10));
+  }
+
+  if (model.name === 'Earth') {
+    ctx.globalAlpha = 0.38;
+    ctx.fillStyle = '#2bdc9b';
+    for (let i = 0; i < 28; i += 1) {
+      ctx.beginPath();
+      ctx.ellipse(Math.random() * canvas.width, Math.random() * canvas.height, 10 + Math.random() * 24, 4 + Math.random() * 12, Math.random() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  if (model.name === 'Mercury') {
+    ctx.globalAlpha = 0.24;
+    ctx.fillStyle = '#1d1714';
+    for (let i = 0; i < 36; i += 1) {
+      ctx.beginPath();
+      ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, 1 + Math.random() * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.globalAlpha = 1;
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 2;
+  return texture;
+}
+
 function OrbitRing({ radius }) {
   return (
     <mesh rotation={[Math.PI / 2, 0, 0]}>
@@ -25,6 +69,7 @@ function PlanetBody({ model, index }) {
   const planet = useRef();
   const cloud = useRef();
   const phase = useMemo(() => index * 1.7, [index]);
+  const texture = useMemo(() => makePlanetTexture(model), [model]);
 
   useFrame(({ clock }, delta) => {
     pivot.current.rotation.y = clock.elapsedTime * model.speed + phase;
@@ -40,6 +85,7 @@ function PlanetBody({ model, index }) {
           <sphereGeometry args={[model.radius, 48, 48]} />
           <meshStandardMaterial
             color={model.color}
+            map={texture}
             roughness={model.roughness}
             metalness={0.04}
             emissive={model.emissive || '#080808'}
@@ -93,17 +139,17 @@ function PlanetInfographic() {
 
 export default function PlanetSection() {
   return (
-    <section className="section split-section" data-scene="planets">
+    <section id="planets" className="section split-section" data-scene="planets" aria-labelledby="planets-title">
       <div className="section-copy reveal">
         <p className="eyebrow">Planetary systems</p>
-        <h2>Worlds become readable when motion, scale, and light work together.</h2>
+        <h2 id="planets-title">Worlds become readable when motion, scale, and light work together.</h2>
         <p>
           Planets are gravity-made records of their star systems. Atmospheres,
           magnetic fields, rings, storms, and moons reveal how material settled
           after a stellar nursery cleared.
         </p>
       </div>
-      <div className="planet-stage reveal">
+      <div className="planet-stage reveal" role="img" aria-label="Animated orbital model showing rotating planets circling a central star.">
       <Canvas camera={{ position: [0, 4.1, 6.8], fov: 43 }} dpr={[1, 1.25]} gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}>
           <PlanetInfographic />
         </Canvas>

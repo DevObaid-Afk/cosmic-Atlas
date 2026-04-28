@@ -7,11 +7,22 @@
   import BlackHoleJourney from './components/BlackHoleJourney.jsx';
   import { initScrollAnimations } from './animations/scrollAnimations.js';
 
+  const missionStops = [
+    { href: '#hero', label: 'Origin' },
+    { href: '#planets', label: 'Planets' },
+    { href: '#galaxies', label: 'Galaxies' },
+    { href: '#scale', label: 'Scale' },
+    { href: '#black-hole', label: 'Horizon' },
+  ];
+
   function SpaceCursor() {
     const cursorRef = useRef(null);
     const dotRef = useRef(null);
 
     useEffect(() => {
+      const shouldDisableCursor = window.matchMedia('(hover: none), (pointer: coarse), (prefers-reduced-motion: reduce)').matches;
+      if (shouldDisableCursor) return undefined;
+
       const cursor = cursorRef.current;
       const dot = dotRef.current;
       let frame;
@@ -49,6 +60,19 @@
       </div>
     );
   }
+
+  function MissionProgress() {
+    return (
+      <nav className="mission-progress" aria-label="Cosmic journey sections">
+        {missionStops.map((stop) => (
+          <a key={stop.href} href={stop.href}>
+            <i aria-hidden="true" />
+            <span>{stop.label}</span>
+          </a>
+        ))}
+      </nav>
+    );
+  }
   
   export default function App() {
     const [isLoaded, setIsLoaded] = useState(false);
@@ -73,6 +97,7 @@
         </div>
         <SpaceCursor />
         <SpaceScene />
+        <MissionProgress />
         <main className={`page-shell ${isLoaded ? 'is-ready' : ''}`}>
           <Hero />
           <PlanetSection />

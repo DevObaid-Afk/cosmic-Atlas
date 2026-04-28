@@ -11,6 +11,22 @@ export function initScrollAnimations() {
     cameraDepth: 0,
     parallax: 0,
   };
+  const progressLinks = gsap.utils.toArray(".mission-progress a");
+  const sections = gsap.utils.toArray("[data-scene]");
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const id = entry.target.id;
+        progressLinks.forEach((link) => {
+          link.classList.toggle("is-active", link.getAttribute("href") === `#${id}`);
+        });
+      });
+    },
+    { rootMargin: "-42% 0px -42% 0px", threshold: 0.01 },
+  );
+
+  sections.forEach((section) => observer.observe(section));
 
   const ctx = gsap.context(() => {
     gsap.to(window.__spaceProgress, {
@@ -115,5 +131,8 @@ export function initScrollAnimations() {
   });
 
   ScrollTrigger.refresh();
-  return () => ctx.revert();
+  return () => {
+    observer.disconnect();
+    ctx.revert();
+  };
 }

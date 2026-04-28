@@ -52,17 +52,17 @@ function SpiralGalaxy() {
 
 export default function GalaxySection() {
   return (
-    <section className="section galaxy-section" data-scene="galaxy">
+    <section id="galaxies" className="section galaxy-section" data-scene="galaxy" aria-labelledby="galaxies-title">
       <div className="section-copy centered reveal">
         <p className="eyebrow">Galaxies and nebulae</p>
-        <h2>Star cities form inside luminous clouds of dust and ionized gas.</h2>
+        <h2 id="galaxies-title">Star cities form inside luminous clouds of dust and ionized gas.</h2>
         <p>
           Spiral arms, stellar winds, and supernova shockwaves compress nebulae
           into new stars, while galactic rotation turns bright clusters into
           vast luminous architecture.
         </p>
       </div>
-      <div className="galaxy-orbit reveal">
+      <div className="galaxy-orbit reveal" role="img" aria-label="Rotating spiral galaxy visualization with labels for the dense core, spiral arms, and dust halo.">
         <Canvas camera={{ position: [0, 4.5, 7], fov: 42 }} dpr={[1, 1.25]} gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}>
           <ambientLight intensity={0.35} />
           <SpiralGalaxy />
