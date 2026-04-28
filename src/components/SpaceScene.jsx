@@ -10,24 +10,36 @@ function sceneProgress() {
 }
 
 function CameraFloat({ intensity = 1 }) {
-  const { camera, viewport } = useThree();
+  const { camera, scene, viewport } = useThree();
+  const fogColor = useMemo(() => new THREE.Color(), []);
+  const blackFogColor = useMemo(() => new THREE.Color('#000000'), []);
 
   useFrame(({ clock, pointer }) => {
     const elapsed = clock.elapsedTime;
     const progress = sceneProgress();
     const mobileScale = viewport.width < 7 ? 0.62 : 1;
     const cinematicDepth = THREE.MathUtils.smoothstep(progress.cameraDepth, 0, 1);
+    const finalApproach = THREE.MathUtils.smoothstep(progress.blackHole, 0, 1);
     const driftX = Math.sin(elapsed * 0.18) * 0.36 + pointer.x * 0.16;
     const driftY = Math.cos(elapsed * 0.14) * 0.22 + pointer.y * 0.1;
-    const scrollPush = cinematicDepth * 7.2 - progress.blackHole * 0.9;
+    const scrollPush = cinematicDepth * 6.4 + finalApproach * 2.1;
     const targetZ = 8.8 - scrollPush;
-    const lookAheadZ = -14 - cinematicDepth * 9;
+    const lookAheadZ = -14 - cinematicDepth * 8 - finalApproach * 6;
 
-    camera.position.x = THREE.MathUtils.lerp(camera.position.x, driftX * intensity * mobileScale, 0.035);
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, driftY * intensity * mobileScale, 0.035);
-    camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.026);
-    camera.rotation.z = THREE.MathUtils.lerp(camera.rotation.z, Math.sin(elapsed * 0.1) * 0.014, 0.022);
-    camera.lookAt(pointer.x * 0.34, pointer.y * 0.18, lookAheadZ);
+    camera.position.x = THREE.MathUtils.lerp(camera.position.x, driftX * intensity * mobileScale * (1 - finalApproach * 0.32), 0.03);
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, driftY * intensity * mobileScale * (1 - finalApproach * 0.28), 0.03);
+    camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ, 0.022);
+    camera.fov = THREE.MathUtils.lerp(camera.fov, 58 - finalApproach * 4, 0.018);
+    camera.updateProjectionMatrix();
+    camera.rotation.z = THREE.MathUtils.lerp(camera.rotation.z, Math.sin(elapsed * 0.1) * 0.014 + finalApproach * 0.012, 0.018);
+    camera.lookAt(pointer.x * 0.24 * (1 - finalApproach), pointer.y * 0.12 * (1 - finalApproach), lookAheadZ);
+
+    if (scene.fog) {
+      fogColor.set('#020412').lerp(blackFogColor, finalApproach * 0.72);
+      scene.fog.color.copy(fogColor);
+      scene.fog.near = THREE.MathUtils.lerp(scene.fog.near, 18 - finalApproach * 5, 0.025);
+      scene.fog.far = THREE.MathUtils.lerp(scene.fog.far, 58 - finalApproach * 15, 0.025);
+    }
   });
 
   return null;
@@ -99,6 +111,8 @@ function StarLayer({ count, radius, depth, speed, size, opacity, colorShift = 0,
   const mesh = useRef();
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const color = useMemo(() => new THREE.Color(), []);
+  const geometry = useMemo(() => new THREE.SphereGeometry(1, 6, 6), []);
+  const material = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity, toneMapped: false }), [opacity]);
   const stars = useMemo(() => {
     const data = [];
     for (let i = 0; i < count; i += 1) {
@@ -132,33 +146,49 @@ function StarLayer({ count, radius, depth, speed, size, opacity, colorShift = 0,
   useFrame(({ clock }, delta) => {
     const elapsed = clock.elapsedTime;
     const progress = sceneProgress();
+    const finalApproach = THREE.MathUtils.smoothstep(progress.blackHole, 0, 1);
     stars.forEach((star, index) => {
       star.z += delta * speed;
       if (star.z > 7) {
         star.z = -depth - 7;
       }
       const shimmer = 0.74 + Math.sin(elapsed * 0.75 + star.twinkle) * 0.22;
-      dummy.position.set(star.x + Math.sin(elapsed * 0.04 + star.y) * 0.12, star.y, star.z);
+      const centerPull = finalApproach * parallax * 0.018;
+      dummy.position.set(
+        star.x * (1 - centerPull) + Math.sin(elapsed * 0.04 + star.y) * 0.12,
+        star.y * (1 - centerPull),
+        star.z + finalApproach * parallax * 0.8,
+      );
       dummy.scale.setScalar(star.scale * shimmer);
       dummy.updateMatrix();
       mesh.current.setMatrixAt(index, dummy.matrix);
     });
-    mesh.current.rotation.z = Math.sin(elapsed * 0.025) * 0.015;
+    mesh.current.rotation.z = Math.sin(elapsed * 0.025) * 0.015 + finalApproach * parallax * 0.012;
     mesh.current.position.x = -progress.parallax * parallax * 0.18;
     mesh.current.position.z = progress.parallax * parallax;
+    mesh.current.material.opacity = opacity * (1 - finalApproach * 0.28);
     mesh.current.instanceMatrix.needsUpdate = true;
   });
 
   return (
-    <instancedMesh ref={mesh} args={[null, null, count]} frustumCulled={false}>
-      <sphereGeometry args={[1, 8, 8]} />
-      <meshBasicMaterial transparent opacity={opacity} toneMapped={false} />
-    </instancedMesh>
+    <instancedMesh ref={mesh} args={[geometry, material, count]} frustumCulled={false} />
   );
 }
 
-function FloatingParticles({ count = 360 }) {
+function FloatingParticles({ count = 180 }) {
   const points = useRef();
+  const material = useMemo(
+    () => new THREE.PointsMaterial({
+      color: '#7df5ff',
+      size: 0.028,
+      transparent: true,
+      opacity: 0.48,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false,
+    }),
+    [],
+  );
   const { positions, sizes } = useMemo(() => {
     const positionData = new Float32Array(count * 3);
     const sizeData = new Float32Array(count);
@@ -188,15 +218,7 @@ function FloatingParticles({ count = 360 }) {
         <bufferAttribute attach="attributes-position" count={positions.length / 3} array={positions} itemSize={3} />
         <bufferAttribute attach="attributes-size" count={sizes.length} array={sizes} itemSize={1} />
       </bufferGeometry>
-      <pointsMaterial
-        color="#7df5ff"
-        size={0.028}
-        transparent
-        opacity={0.48}
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-        toneMapped={false}
-      />
+      <primitive object={material} attach="material" />
     </points>
   );
 }
@@ -213,12 +235,12 @@ function SpaceEnvironment() {
 
   return (
     <group ref={group}>
-      <NebulaLayer color={NEBULA_COLORS[0]} position={[-3.4, 1.6, -18]} scale={[18, 10, 1]} speed={0.42} opacity={0.18} rotation={-0.18} parallax={0.7} />
-      <NebulaLayer color={NEBULA_COLORS[1]} position={[4.5, -1.2, -23]} scale={[22, 12, 1]} speed={0.3} opacity={0.15} rotation={0.34} parallax={0.35} />
-      <NebulaLayer color={NEBULA_COLORS[2]} position={[0.7, 0.1, -15]} scale={[13, 7.5, 1]} speed={0.54} opacity={0.11} rotation={0.08} parallax={1.1} />
-      <StarLayer count={1800} radius={12} depth={24} speed={0.22} size={0.012} opacity={0.92} parallax={2.2} />
-      <StarLayer count={2600} radius={20} depth={40} speed={0.12} size={0.009} opacity={0.7} colorShift={2} parallax={1.15} />
-      <StarLayer count={3400} radius={34} depth={66} speed={0.06} size={0.007} opacity={0.52} colorShift={4} parallax={0.45} />
+      <NebulaLayer color={NEBULA_COLORS[0]} position={[-3.4, 1.6, -18]} scale={[18, 10, 1]} speed={0.34} opacity={0.18} rotation={-0.18} parallax={0.7} />
+      <NebulaLayer color={NEBULA_COLORS[1]} position={[4.5, -1.2, -23]} scale={[22, 12, 1]} speed={0.24} opacity={0.15} rotation={0.34} parallax={0.35} />
+      <NebulaLayer color={NEBULA_COLORS[2]} position={[0.7, 0.1, -15]} scale={[13, 7.5, 1]} speed={0.42} opacity={0.11} rotation={0.08} parallax={1.1} />
+      <StarLayer count={900} radius={12} depth={24} speed={0.22} size={0.012} opacity={0.92} parallax={2.2} />
+      <StarLayer count={1300} radius={20} depth={40} speed={0.12} size={0.009} opacity={0.7} colorShift={2} parallax={1.15} />
+      <StarLayer count={1700} radius={34} depth={66} speed={0.06} size={0.007} opacity={0.52} colorShift={4} parallax={0.45} />
       <FloatingParticles />
     </group>
   );
@@ -229,7 +251,7 @@ export default function SpaceScene({ className = '', cameraFloat = 1 }) {
     <div className={`space-canvas ${className}`.trim()} aria-hidden="true">
       <Canvas
         camera={{ position: [0, 0, 8.8], fov: 58, near: 0.1, far: 90 }}
-        dpr={[1, 1.6]}
+        dpr={[1, 1.25]}
         frameloop="always"
         gl={{ antialias: false, alpha: true, powerPreference: 'high-performance' }}
       >

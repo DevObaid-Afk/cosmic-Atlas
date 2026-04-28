@@ -104,7 +104,7 @@ export default function PlanetSection() {
         </p>
       </div>
       <div className="planet-stage reveal">
-        <Canvas camera={{ position: [0, 4.1, 6.8], fov: 43 }} dpr={[1, 1.5]} gl={{ antialias: true, alpha: true }}>
+      <Canvas camera={{ position: [0, 4.1, 6.8], fov: 43 }} dpr={[1, 1.25]} gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}>
           <PlanetInfographic />
         </Canvas>
         <div className="planet-readouts" aria-hidden="true">

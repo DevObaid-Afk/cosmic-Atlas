@@ -8,7 +8,7 @@ function SpiralGalaxy() {
   const points = useRef();
   const halo = useRef();
   const positions = useMemo(() => {
-    const count = 5200;
+    const count = 2600;
     const data = new Float32Array(count * 3);
 
     for (let i = 0; i < count; i += 1) {
@@ -63,7 +63,7 @@ export default function GalaxySection() {
         </p>
       </div>
       <div className="galaxy-orbit reveal">
-        <Canvas camera={{ position: [0, 4.5, 7], fov: 42 }} dpr={[1, 1.5]} gl={{ antialias: true, alpha: true }}>
+        <Canvas camera={{ position: [0, 4.5, 7], fov: 42 }} dpr={[1, 1.25]} gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}>
           <ambientLight intensity={0.35} />
           <SpiralGalaxy />
         </Canvas>

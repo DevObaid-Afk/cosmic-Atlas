@@ -2,6 +2,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 gsap.registerPlugin(ScrollTrigger);
+gsap.defaults({ ease: "expo.out" });
 
 export function initScrollAnimations() {
   window.__spaceProgress = {
@@ -52,14 +53,12 @@ export function initScrollAnimations() {
         {
           autoAlpha: 0,
           y: 44,
-          filter: "blur(14px)",
         },
         {
           autoAlpha: 1,
           y: 0,
-          filter: "blur(0px)",
-          duration: 1.15,
-          ease: "power3.out",
+          duration: 1.25,
+          ease: "expo.out",
           scrollTrigger: {
             trigger: el,
             start: "top 86%",
@@ -75,15 +74,13 @@ export function initScrollAnimations() {
         {
           autoAlpha: 0,
           y: 36,
-          filter: "blur(12px)",
         },
         {
           autoAlpha: 1,
           y: 0,
-          filter: "blur(0px)",
-          duration: 0.95,
-          stagger: 0.12,
-          ease: "power3.out",
+          duration: 1.05,
+          stagger: 0.1,
+          ease: "expo.out",
           scrollTrigger: {
             trigger: group,
             start: "top 84%",
@@ -96,7 +93,6 @@ export function initScrollAnimations() {
     gsap.to(".space-canvas", {
       opacity: 0.9,
       scale: 1.04,
-      filter: "blur(0.6px) saturate(1.08)",
       scrollTrigger: {
         trigger: '[data-scene="blackhole"]',
         start: "top center",
@@ -105,18 +101,9 @@ export function initScrollAnimations() {
       },
     });
 
-    // const starWarp = document.querySelector(".star-warp");
-
-    // if (starWarp) {
-    //   gsap.to(starWarp, {
-    //     opacity: 1,
-    //     duration: 2,
-    //   });
-    // }
-
     gsap.utils.toArray(".info-card").forEach((card, index) => {
       gsap.to(card, {
-        y: index % 2 ? -18 : 18,
+        y: index % 2 ? -12 : 12,
         scrollTrigger: {
           trigger: card,
           start: "top bottom",

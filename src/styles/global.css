@@ -7,9 +7,16 @@
   --violet: #8d62ff;
   --gold: #ffbc63;
   --white: #f4fbff;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --glass-border: rgba(150, 232, 255, 0.22);
 }
 
 * { box-sizing: border-box; }
+
+::selection {
+  color: #02030a;
+  background: rgba(128, 247, 255, 0.9);
+}
 
 html {
   background: #02030a;
@@ -25,9 +32,68 @@ body {
     radial-gradient(circle at 80% 34%, rgba(141, 98, 255, 0.18), transparent 30rem),
     linear-gradient(180deg, #02030a 0%, #040719 42%, #010106 100%);
   overflow-x: hidden;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
 }
 
 button, a { font: inherit; }
+
+.site-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  gap: 1rem;
+  align-content: center;
+  color: rgba(244, 251, 255, 0.78);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(73, 137, 255, 0.16), transparent 22rem),
+    #01020a;
+  transition: opacity 700ms var(--ease-out), visibility 700ms var(--ease-out);
+}
+
+.site-loader.is-loaded {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.loader-orbit {
+  position: relative;
+  width: 4.2rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid rgba(128, 247, 255, 0.28);
+  box-shadow: 0 0 44px rgba(128, 247, 255, 0.18), inset 0 0 24px rgba(73, 137, 255, 0.12);
+  animation: loaderSpin 1.8s linear infinite;
+}
+
+.loader-orbit::before {
+  content: '';
+  position: absolute;
+  inset: 34%;
+  border-radius: 50%;
+  background: #000;
+  box-shadow: 0 0 18px rgba(255, 188, 99, 0.32);
+}
+
+.loader-orbit i {
+  position: absolute;
+  top: 0.25rem;
+  left: 50%;
+  width: 0.52rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 18px var(--cyan);
+}
+
+.site-loader span {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
 
 .space-canvas {
   position: fixed;
@@ -44,7 +110,6 @@ button, a { font: inherit; }
 .space-canvas canvas {
   width: 100%;
   height: 100%;
-  filter: saturate(1.22) contrast(1.1);
 }
 
 .star-warp,
@@ -83,15 +148,35 @@ button, a { font: inherit; }
 .page-shell {
   position: relative;
   z-index: 1;
+  opacity: 0;
+  transform: translateY(0.75rem);
+  transition: opacity 900ms var(--ease-out), transform 900ms var(--ease-out);
+}
+
+.page-shell.is-ready {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .section {
   min-height: 112vh;
   width: 100%;
-  padding: 18vh clamp(1.25rem, 5vw, 5rem);
+  padding: clamp(6.5rem, 16vh, 10rem) clamp(1.25rem, 5vw, 5rem);
   display: grid;
   align-items: center;
-  gap: 3rem;
+  gap: clamp(2rem, 4vw, 3.4rem);
+  position: relative;
+  isolation: isolate;
+}
+
+.section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent 0 6%, rgba(1, 2, 10, 0.24) 45%, transparent 94%);
+  opacity: 0.72;
 }
 
 .hero-section {
@@ -129,18 +214,19 @@ p {
 
 h1 {
   max-width: 980px;
-  margin-bottom: 1.4rem;
+  margin-bottom: clamp(1rem, 2vw, 1.4rem);
   font-size: clamp(3.25rem, 8vw, 8.6rem);
-  line-height: 0.91;
+  line-height: 0.93;
   letter-spacing: 0;
   text-shadow: 0 0 36px rgba(128, 247, 255, 0.18);
 }
 
 h2 {
-  margin-bottom: 1.25rem;
+  margin-bottom: clamp(1rem, 2vw, 1.35rem);
   font-size: clamp(2.1rem, 5vw, 5.2rem);
-  line-height: 0.98;
+  line-height: 1;
   letter-spacing: 0;
+  text-shadow: 0 0 30px rgba(128, 247, 255, 0.12);
 }
 
 h3 {
@@ -151,7 +237,7 @@ h3 {
 p {
   color: rgba(233, 244, 255, 0.76);
   font-size: clamp(1rem, 1.5vw, 1.22rem);
-  line-height: 1.75;
+  line-height: 1.72;
 }
 
 .hero-copy > p:last-child,
@@ -166,10 +252,12 @@ p {
 .glass,
 .info-card,
 .horizon-terminal {
-  border: 1px solid rgba(150, 232, 255, 0.22);
-  background: linear-gradient(145deg, rgba(9, 18, 42, 0.72), rgba(11, 10, 28, 0.42));
-  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.34), inset 0 1px rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(18px);
+  border: 1px solid var(--glass-border);
+  background:
+    linear-gradient(145deg, rgba(10, 23, 52, 0.74), rgba(9, 8, 26, 0.46)),
+    radial-gradient(circle at 20% 0%, rgba(128, 247, 255, 0.08), transparent 34%);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.36), inset 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px) saturate(1.18);
 }
 
 .mission-panel {
@@ -231,8 +319,17 @@ p {
   background:
     radial-gradient(circle at 50% 46%, rgba(128, 247, 255, 0.12), transparent 34%),
     linear-gradient(145deg, rgba(9, 18, 42, 0.46), rgba(2, 3, 10, 0.1));
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 28px 90px rgba(0, 0, 0, 0.24);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 30px 100px rgba(0, 0, 0, 0.28), 0 0 46px rgba(73, 137, 255, 0.08);
   overflow: hidden;
+}
+
+.planet-stage::after,
+.galaxy-orbit::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, transparent 0 56%, rgba(0, 0, 0, 0.36) 100%);
 }
 
 .planet-stage canvas,
@@ -282,10 +379,12 @@ p {
 .info-card {
   position: relative;
   min-height: 12rem;
-  padding: 1.25rem;
+  padding: clamp(1.1rem, 2vw, 1.35rem);
   border-radius: 8px;
   overflow: hidden;
-  transition: transform 260ms ease, border-color 260ms ease, box-shadow 260ms ease, background 260ms ease;
+  transform: translateZ(0);
+  transition: transform 420ms var(--ease-out), border-color 420ms var(--ease-out), box-shadow 420ms var(--ease-out), background 420ms var(--ease-out);
+  will-change: transform;
 }
 
 .info-card::before {
@@ -304,7 +403,7 @@ p {
 }
 
 .info-card:hover {
-  transform: translateY(-8px) scale(1.015);
+  transform: translateY(-7px) scale(1.012);
   border-color: rgba(128, 247, 255, 0.6);
   background: linear-gradient(145deg, rgba(11, 31, 70, 0.78), rgba(18, 12, 42, 0.5));
   box-shadow: 0 28px 90px rgba(40, 143, 255, 0.2), 0 0 42px rgba(128, 247, 255, 0.18);
@@ -332,12 +431,11 @@ p {
   width: min(50vw, 34rem);
   aspect-ratio: 1;
   margin: 0 auto;
-  filter: drop-shadow(0 0 34px rgba(128, 247, 255, 0.18));
+  filter: drop-shadow(0 0 38px rgba(128, 247, 255, 0.2));
 }
 
 .galaxy-label {
   position: absolute;
-  animation: labelFloat 4.8s ease-in-out infinite;
 }
 
 .label-core {
@@ -375,7 +473,6 @@ p {
   background: linear-gradient(90deg, var(--cyan), var(--blue), var(--violet), var(--gold));
   box-shadow: 0 0 28px rgba(128, 247, 255, 0.42);
   transform-origin: left center;
-  animation: scaleBeam 3.8s ease-in-out infinite alternate;
 }
 
 .scale-stop {
@@ -384,7 +481,6 @@ p {
   min-height: 2.9rem;
   border-right: 1px solid rgba(128, 247, 255, 0.28);
   margin-bottom: 0.72rem;
-  animation: scalePulse 4.2s ease-in-out infinite;
 }
 
 .scale-stop i {
@@ -432,8 +528,10 @@ p {
   padding: 1.15rem 1.25rem;
   border: 1px solid rgba(128, 247, 255, 0.22);
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(9, 18, 42, 0.72), rgba(12, 10, 30, 0.42));
-  backdrop-filter: blur(18px);
+  background:
+    linear-gradient(135deg, rgba(9, 18, 42, 0.72), rgba(12, 10, 30, 0.42)),
+    radial-gradient(circle at 82% 0%, rgba(255, 188, 99, 0.08), transparent 32%);
+  backdrop-filter: blur(18px) saturate(1.16);
 }
 
 .lightyear-panel span {
@@ -506,7 +604,6 @@ p {
   height: 92%;
   background: radial-gradient(circle, rgba(0, 0, 0, 0) 38%, rgba(128, 247, 255, 0.13) 42%, transparent 64%);
   opacity: 0.72;
-  animation: horizonPulse 5s ease-in-out infinite;
 }
 
 .accretion-disk {
@@ -568,6 +665,10 @@ p {
   to { transform: rotate(360deg); }
 }
 
+@keyframes loaderSpin {
+  to { transform: rotate(360deg); }
+}
+
 @keyframes pulse {
   from { opacity: 0.34; transform: scaleX(0.78); }
   to { opacity: 1; transform: scaleX(1); }
@@ -605,7 +706,7 @@ p {
 
   .hero-section {
     align-items: center;
-    padding-top: 20vh;
+    padding-top: 18vh;
   }
 
   .mission-panel {
@@ -618,6 +719,7 @@ p {
   }
 
   .planet-stage {
+    height: clamp(24rem, 78vw, 32rem);
     min-height: 28rem;
     width: min(100%, 34rem);
   }
@@ -688,15 +790,34 @@ p {
 
 @media (max-width: 560px) {
   .section {
-    padding-inline: 1rem;
+    min-height: auto;
+    padding: 5.5rem 1rem;
+    gap: 1.6rem;
+  }
+
+  .hero-section {
+    min-height: 100vh;
+    padding-top: 7rem;
+    padding-bottom: 5rem;
   }
 
   h1 {
-    font-size: clamp(2.7rem, 16vw, 4.4rem);
+    font-size: clamp(2.65rem, 14.5vw, 4.15rem);
+    line-height: 0.97;
   }
 
   h2 {
-    font-size: clamp(2rem, 11vw, 3.2rem);
+    font-size: clamp(1.95rem, 10vw, 3.05rem);
+    line-height: 1.04;
+  }
+
+  p {
+    line-height: 1.65;
+  }
+
+  .eyebrow {
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
   }
 
   .info-card {
@@ -704,6 +825,7 @@ p {
   }
 
   .planet-stage {
+    height: 23rem;
     min-height: 23rem;
   }
 
@@ -744,5 +866,23 @@ p {
 
   .event-horizon {
     width: min(52vw, 9.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .info-card:hover {
+    transform: none;
   }
 }
