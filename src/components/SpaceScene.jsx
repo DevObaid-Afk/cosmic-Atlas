@@ -1,158 +1,232 @@
-import React from "react";
+import React, { useLayoutEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Float, OrbitControls, Stars } from '@react-three/drei';
-import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 
-function useSceneProgress() {
+const STAR_COLORS = ['#ffffff', '#dff8ff', '#b9d6ff', '#a7f7ff', '#d8c8ff'];
+const NEBULA_COLORS = ['#7c4dff', '#2f7dff', '#62f6ff'];
+
+function sceneProgress() {
   return window.__spaceProgress || { total: 0, blackHole: 0 };
 }
 
-function CameraRig() {
-  const { camera } = useThree();
+function CameraFloat({ intensity = 1 }) {
+  const { camera, viewport } = useThree();
 
-  useFrame(() => {
-    const progress = useSceneProgress();
-    const t = progress.total;
-    camera.position.x = THREE.MathUtils.lerp(camera.position.x, Math.sin(t * Math.PI * 2) * 2.3, 0.035);
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, 1.2 - t * 1.8, 0.035);
-    camera.position.z = THREE.MathUtils.lerp(camera.position.z, 12 - t * 18 + progress.blackHole * 5, 0.035);
-    camera.lookAt(0, -0.4, -8 - progress.blackHole * 6);
+  useFrame(({ clock, pointer }) => {
+    const elapsed = clock.elapsedTime;
+    const progress = sceneProgress();
+    const mobileScale = viewport.width < 7 ? 0.62 : 1;
+    const driftX = Math.sin(elapsed * 0.18) * 0.42 + pointer.x * 0.22;
+    const driftY = Math.cos(elapsed * 0.14) * 0.26 + pointer.y * 0.12;
+    const scrollPush = progress.total * 2.2 - progress.blackHole * 1.4;
+
+    camera.position.x = THREE.MathUtils.lerp(camera.position.x, driftX * intensity * mobileScale, 0.035);
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, driftY * intensity * mobileScale, 0.035);
+    camera.position.z = THREE.MathUtils.lerp(camera.position.z, 8.8 - scrollPush, 0.03);
+    camera.rotation.z = THREE.MathUtils.lerp(camera.rotation.z, Math.sin(elapsed * 0.1) * 0.018, 0.025);
+    camera.lookAt(pointer.x * 0.45, pointer.y * 0.22, -14);
   });
 
   return null;
 }
 
-function Planet({ position, color, size, emissive = '#07111f' }) {
-  const ref = useRef();
-
-  useFrame((_, delta) => {
-    ref.current.rotation.y += delta * 0.28;
-    ref.current.rotation.x += delta * 0.05;
-  });
-
-  return (
-    <Float speed={1.8} rotationIntensity={0.25} floatIntensity={0.6}>
-      <group position={position}>
-        <mesh ref={ref}>
-          <sphereGeometry args={[size, 64, 64]} />
-          <meshStandardMaterial color={color} roughness={0.55} metalness={0.08} emissive={emissive} />
-        </mesh>
-        <mesh rotation={[Math.PI / 2.15, 0, 0]}>
-          <torusGeometry args={[size * 1.65, 0.012, 10, 120]} />
-          <meshBasicMaterial color="#84f8ff" transparent opacity={0.35} />
-        </mesh>
-      </group>
-    </Float>
+function NebulaLayer({ color, position, scale, speed, opacity, rotation = 0 }) {
+  const mesh = useRef();
+  const uniforms = useMemo(
+    () => ({
+      uTime: { value: 0 },
+      uColor: { value: new THREE.Color(color) },
+      uOpacity: { value: opacity },
+    }),
+    [color, opacity],
   );
-}
 
-function GalaxyParticles() {
-  const ref = useRef();
-  const positions = useMemo(() => {
-    const pts = new Float32Array(2600 * 3);
-    for (let i = 0; i < 2600; i += 1) {
-      const radius = Math.random() * 5.5;
-      const arm = (i % 4) * (Math.PI / 2);
-      const angle = radius * 1.7 + arm + (Math.random() - 0.5) * 0.45;
-      pts[i * 3] = Math.cos(angle) * radius;
-      pts[i * 3 + 1] = (Math.random() - 0.5) * 0.22;
-      pts[i * 3 + 2] = Math.sin(angle) * radius - 13;
-    }
-    return pts;
-  }, []);
-
-  useFrame((_, delta) => {
-    ref.current.rotation.y += delta * 0.045;
-    ref.current.rotation.z += delta * 0.018;
+  useFrame(({ clock }) => {
+    uniforms.uTime.value = clock.elapsedTime * speed;
+    mesh.current.rotation.z = rotation + Math.sin(clock.elapsedTime * speed * 0.35) * 0.08;
   });
 
   return (
-    <points ref={ref} position={[0.4, -0.8, -6]}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" count={positions.length / 3} array={positions} itemSize={3} />
-      </bufferGeometry>
-      <pointsMaterial color="#d8f7ff" size={0.035} transparent opacity={0.82} blending={THREE.AdditiveBlending} />
-    </points>
-  );
-}
+    <mesh ref={mesh} position={position} scale={scale} rotation={[0, 0, rotation]}>
+      <planeGeometry args={[1, 1, 96, 96]} />
+      <shaderMaterial
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        uniforms={uniforms}
+        vertexShader={`
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `}
+        fragmentShader={`
+          uniform float uTime;
+          uniform vec3 uColor;
+          uniform float uOpacity;
+          varying vec2 vUv;
 
-function NebulaVeil() {
-  const ref = useRef();
+          float glow(vec2 p, vec2 center, float radius, float softness) {
+            float d = length(p - center);
+            return smoothstep(radius, radius - softness, d);
+          }
 
-  useFrame((state) => {
-    ref.current.rotation.z = state.clock.elapsedTime * 0.018;
-    ref.current.material.opacity = 0.2 + Math.sin(state.clock.elapsedTime * 0.4) * 0.05;
-  });
-
-  return (
-    <mesh ref={ref} position={[-2.5, 1.3, -9]} scale={[8, 4.2, 1]}>
-      <planeGeometry args={[1, 1, 48, 48]} />
-      <meshBasicMaterial color="#7a4cff" transparent opacity={0.22} blending={THREE.AdditiveBlending} depthWrite={false} />
+          void main() {
+            vec2 p = vUv;
+            float pulse = sin(uTime + p.x * 5.0 + p.y * 3.0) * 0.5 + 0.5;
+            float cloud =
+              glow(p, vec2(0.36 + sin(uTime * 0.22) * 0.06, 0.58), 0.52, 0.36) +
+              glow(p, vec2(0.68, 0.38 + cos(uTime * 0.18) * 0.05), 0.42, 0.32) +
+              glow(p, vec2(0.48, 0.42), 0.28, 0.2);
+            float grain = fract(sin(dot(p * 420.0, vec2(12.9898, 78.233))) * 43758.5453);
+            float alpha = clamp(cloud * (0.55 + pulse * 0.24) + grain * 0.045, 0.0, 1.0) * uOpacity;
+            gl_FragColor = vec4(uColor, alpha);
+          }
+        `}
+      />
     </mesh>
   );
 }
 
-function BlackHole() {
-  const group = useRef();
-  const disk = useRef();
-  const arcs = useRef();
+function StarLayer({ count, radius, depth, speed, size, opacity, colorShift = 0 }) {
+  const mesh = useRef();
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  const color = useMemo(() => new THREE.Color(), []);
+  const stars = useMemo(() => {
+    const data = [];
+    for (let i = 0; i < count; i += 1) {
+      const theta = Math.random() * Math.PI * 2;
+      const r = Math.sqrt(Math.random()) * radius;
+      data.push({
+        x: Math.cos(theta) * r,
+        y: (Math.random() - 0.5) * radius * 0.76,
+        z: -Math.random() * depth - 4,
+        scale: THREE.MathUtils.randFloat(size * 0.55, size * 1.7),
+        twinkle: Math.random() * Math.PI * 2,
+        color: STAR_COLORS[(i + colorShift) % STAR_COLORS.length],
+      });
+    }
+    return data;
+  }, [colorShift, count, depth, radius, size]);
 
-  useFrame((state, delta) => {
-    const p = useSceneProgress().blackHole;
-    group.current.position.z = THREE.MathUtils.lerp(-22, -7.2, p);
-    group.current.scale.setScalar(THREE.MathUtils.lerp(0.65, 2.8, p));
-    disk.current.rotation.z += delta * (0.45 + p * 1.8);
-    disk.current.material.opacity = 0.55 + p * 0.42;
-    arcs.current.rotation.z = -state.clock.elapsedTime * (0.18 + p * 0.5);
-    document.documentElement.style.setProperty('--horizon', p.toFixed(3));
+  useLayoutEffect(() => {
+    stars.forEach((star, index) => {
+      dummy.position.set(star.x, star.y, star.z);
+      dummy.scale.setScalar(star.scale);
+      dummy.updateMatrix();
+      mesh.current.setMatrixAt(index, dummy.matrix);
+      color.set(star.color);
+      mesh.current.setColorAt(index, color);
+    });
+    mesh.current.instanceMatrix.needsUpdate = true;
+    mesh.current.instanceColor.needsUpdate = true;
+  }, [color, dummy, stars]);
+
+  useFrame(({ clock }, delta) => {
+    const elapsed = clock.elapsedTime;
+    stars.forEach((star, index) => {
+      star.z += delta * speed;
+      if (star.z > 7) {
+        star.z = -depth - 7;
+      }
+      const shimmer = 0.74 + Math.sin(elapsed * 0.75 + star.twinkle) * 0.22;
+      dummy.position.set(star.x + Math.sin(elapsed * 0.04 + star.y) * 0.12, star.y, star.z);
+      dummy.scale.setScalar(star.scale * shimmer);
+      dummy.updateMatrix();
+      mesh.current.setMatrixAt(index, dummy.matrix);
+    });
+    mesh.current.rotation.z = Math.sin(elapsed * 0.025) * 0.015;
+    mesh.current.instanceMatrix.needsUpdate = true;
   });
 
   return (
-    <group ref={group} position={[0, -0.2, -22]}>
-      <mesh>
-        <sphereGeometry args={[1.32, 96, 96]} />
-        <meshBasicMaterial color="#000000" />
-      </mesh>
-      <mesh ref={disk} rotation={[1.32, 0, 0]}>
-        <torusGeometry args={[2.1, 0.14, 24, 220]} />
-        <meshBasicMaterial color="#ffb44c" transparent opacity={0.7} blending={THREE.AdditiveBlending} />
-      </mesh>
-      <mesh ref={arcs} rotation={[1.45, 0.15, 0]}>
-        <torusGeometry args={[2.85, 0.018, 8, 240]} />
-        <meshBasicMaterial color="#8af7ff" transparent opacity={0.7} blending={THREE.AdditiveBlending} />
-      </mesh>
-      <pointLight color="#ffb35c" intensity={18} distance={9} />
+    <instancedMesh ref={mesh} args={[null, null, count]} frustumCulled={false}>
+      <sphereGeometry args={[1, 8, 8]} />
+      <meshBasicMaterial transparent opacity={opacity} toneMapped={false} />
+    </instancedMesh>
+  );
+}
+
+function FloatingParticles({ count = 360 }) {
+  const points = useRef();
+  const { positions, sizes } = useMemo(() => {
+    const positionData = new Float32Array(count * 3);
+    const sizeData = new Float32Array(count);
+
+    for (let i = 0; i < count; i += 1) {
+      positionData[i * 3] = (Math.random() - 0.5) * 18;
+      positionData[i * 3 + 1] = (Math.random() - 0.5) * 10;
+      positionData[i * 3 + 2] = -Math.random() * 18 - 2;
+      sizeData[i] = THREE.MathUtils.randFloat(0.018, 0.055);
+    }
+
+    return { positions: positionData, sizes: sizeData };
+  }, [count]);
+
+  useFrame(({ clock }) => {
+    const elapsed = clock.elapsedTime;
+    points.current.rotation.y = Math.sin(elapsed * 0.07) * 0.04;
+    points.current.rotation.x = Math.cos(elapsed * 0.05) * 0.025;
+    points.current.position.y = Math.sin(elapsed * 0.18) * 0.16;
+  });
+
+  return (
+    <points ref={points} frustumCulled={false}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" count={positions.length / 3} array={positions} itemSize={3} />
+        <bufferAttribute attach="attributes-size" count={sizes.length} array={sizes} itemSize={1} />
+      </bufferGeometry>
+      <pointsMaterial
+        color="#7df5ff"
+        size={0.028}
+        transparent
+        opacity={0.48}
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+        toneMapped={false}
+      />
+    </points>
+  );
+}
+
+function SpaceEnvironment() {
+  const group = useRef();
+
+  useFrame(({ clock }) => {
+    const elapsed = clock.elapsedTime;
+    group.current.rotation.y = Math.sin(elapsed * 0.025) * 0.035;
+    group.current.position.x = Math.sin(elapsed * 0.035) * 0.18;
+  });
+
+  return (
+    <group ref={group}>
+      <NebulaLayer color={NEBULA_COLORS[0]} position={[-3.4, 1.6, -18]} scale={[18, 10, 1]} speed={0.42} opacity={0.18} rotation={-0.18} />
+      <NebulaLayer color={NEBULA_COLORS[1]} position={[4.5, -1.2, -23]} scale={[22, 12, 1]} speed={0.3} opacity={0.15} rotation={0.34} />
+      <NebulaLayer color={NEBULA_COLORS[2]} position={[0.7, 0.1, -15]} scale={[13, 7.5, 1]} speed={0.54} opacity={0.11} rotation={0.08} />
+      <StarLayer count={1800} radius={12} depth={24} speed={0.22} size={0.012} opacity={0.92} />
+      <StarLayer count={2600} radius={20} depth={40} speed={0.12} size={0.009} opacity={0.7} colorShift={2} />
+      <StarLayer count={3400} radius={34} depth={66} speed={0.06} size={0.007} opacity={0.52} colorShift={4} />
+      <FloatingParticles />
     </group>
   );
 }
 
-function SceneObjects() {
+export default function SpaceScene({ className = '', cameraFloat = 1 }) {
   return (
-    <>
-      <ambientLight intensity={0.38} />
-      <directionalLight position={[4, 5, 5]} intensity={2.5} color="#b8eaff" />
-      <Stars radius={90} depth={55} count={7000} factor={4} saturation={0.6} fade speed={0.7} />
-      <NebulaVeil />
-      <Planet position={[-3.8, 0.6, -3.5]} color="#3f8cff" size={0.72} emissive="#08274f" />
-      <Planet position={[3.5, -1.2, -5.2]} color="#d49b58" size={0.48} emissive="#3a1704" />
-      <Planet position={[1.7, 1.8, -8.4]} color="#7df5ff" size={0.34} emissive="#06454a" />
-      <GalaxyParticles />
-      <BlackHole />
-      <CameraRig />
-      <OrbitControls enableZoom={false} enablePan={false} enableRotate={false} />
-    </>
-  );
-}
-
-export default function SpaceScene() {
-  return (
-    <div className="space-canvas" aria-hidden="true">
-      <Canvas camera={{ position: [0, 1.2, 12], fov: 52 }} dpr={[1, 1.75]} gl={{ antialias: true, alpha: true }}>
-        <SceneObjects />
+    <div className={`space-canvas ${className}`.trim()} aria-hidden="true">
+      <Canvas
+        camera={{ position: [0, 0, 8.8], fov: 58, near: 0.1, far: 90 }}
+        dpr={[1, 1.6]}
+        frameloop="always"
+        gl={{ antialias: false, alpha: true, powerPreference: 'high-performance' }}
+      >
+        <color attach="background" args={['#01020a']} />
+        <fog attach="fog" args={['#020412', 18, 58]} />
+        <SpaceEnvironment />
+        <CameraFloat intensity={cameraFloat} />
       </Canvas>
-      <div className="star-warp" />
-      <div className="horizon-vignette" />
+      <div className="cosmic-depth-fade" />
     </div>
   );
 }

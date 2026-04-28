@@ -34,17 +34,22 @@ button, a { font: inherit; }
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: radial-gradient(circle at center, rgba(36, 67, 110, 0.18), transparent 40%);
+  background:
+    radial-gradient(circle at 28% 18%, rgba(89, 57, 180, 0.2), transparent 34rem),
+    radial-gradient(circle at 76% 36%, rgba(44, 145, 255, 0.16), transparent 32rem),
+    radial-gradient(circle at 50% 54%, rgba(98, 246, 255, 0.08), transparent 38rem),
+    #01020a;
 }
 
 .space-canvas canvas {
   width: 100%;
   height: 100%;
-  filter: saturate(1.18) contrast(1.08);
+  filter: saturate(1.22) contrast(1.1);
 }
 
 .star-warp,
-.horizon-vignette {
+.horizon-vignette,
+.cosmic-depth-fade {
   position: absolute;
   inset: -12%;
   pointer-events: none;
@@ -65,6 +70,14 @@ button, a { font: inherit; }
   background:
     radial-gradient(circle at 50% 50%, transparent 0 18%, rgba(0, 0, 0, 0.2) 36%, rgba(0, 0, 0, 0.92) 76%),
     radial-gradient(circle, rgba(255, 188, 99, 0.16), transparent 28%);
+}
+
+.cosmic-depth-fade {
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 44%, transparent 0 42%, rgba(0, 0, 0, 0.34) 74%, rgba(0, 0, 0, 0.86) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.24), transparent 28%, transparent 68%, rgba(0, 0, 0, 0.44));
+  mix-blend-mode: multiply;
 }
 
 .page-shell {

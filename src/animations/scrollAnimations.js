@@ -52,7 +52,7 @@ export function initScrollAnimations() {
       );
     });
 
-    gsap.to(".star-warp", {
+    gsap.to(".space-canvas", {
       opacity: 0.88,
       scale: 1.45,
       filter: "blur(2px)",
@@ -63,6 +63,15 @@ export function initScrollAnimations() {
         scrub: true,
       },
     });
+
+    // const starWarp = document.querySelector(".star-warp");
+
+    // if (starWarp) {
+    //   gsap.to(starWarp, {
+    //     opacity: 1,
+    //     duration: 2,
+    //   });
+    // }
 
     gsap.utils.toArray(".info-card").forEach((card, index) => {
       gsap.to(card, {
